@@ -1,0 +1,4 @@
+asyncpg
+python-telegram-bot[asyncio]
+fastapi
+uvicorn
