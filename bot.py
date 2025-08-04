@@ -32,12 +32,24 @@ CHANNELS = [
 # Database connection (set by init_db)
 DB_POOL = None
 
-# FastAPI app for health check
+
+# FastAPI app for health check and webhook
 fastapi_app = FastAPI()
 
 @fastapi_app.get("/health")
 async def health():
     return {"status": "ok"}
+
+# Telegram webhook endpoint
+from fastapi import Request
+from telegram.ext import Application
+import json
+
+@fastapi_app.post("/webhook")
+async def telegram_webhook(request: Request):
+    data = await request.body()
+    await fastapi_app.bot_app.update_queue.put(json.loads(data))
+    return {"ok": True}
 
 
 logging.basicConfig(level=logging.INFO)
@@ -456,17 +468,21 @@ def main():
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, hack_step_handler))
         app.add_handler(CommandHandler("skip", hack_step_handler))
         app.add_handler(MessageHandler(filters.ALL, broadcast_forward_handler))
-        # Start FastAPI in a background thread
-        def run_fastapi():
-            print("[DEBUG] Starting FastAPI (uvicorn) thread")
-            uvicorn.run(fastapi_app, host="0.0.0.0", port=int(os.environ.get("PORT", 10000)), log_level="info")
-        threading.Thread(target=run_fastapi, daemon=True).start()
-        print("[DEBUG] Started FastAPI thread, about to start app.initialize/start/updater.start_polling()")
-        await app.initialize()
-        await app.start()
-        await app.updater.start_polling()
-        print("[DEBUG] app.updater.start_polling() has exited, entering infinite wait to keep process alive")
-        await asyncio.Event().wait()
+
+        # Attach app to FastAPI for webhook handler
+        fastapi_app.bot_app = app
+
+        # Set webhook URL (replace YOUR_RENDER_URL with your actual Render HTTPS URL)
+        WEBHOOK_PATH = "/webhook"
+        RENDER_URL = os.environ.get("RENDER_EXTERNAL_URL") or "https://YOUR_RENDER_URL.onrender.com"
+        WEBHOOK_URL = f"{RENDER_URL}{WEBHOOK_PATH}"
+
+        print(f"[DEBUG] Setting webhook to {WEBHOOK_URL}")
+        await app.bot.set_webhook(WEBHOOK_URL)
+
+        # Start FastAPI (uvicorn) in main thread
+        print("[DEBUG] Starting FastAPI (uvicorn) in main thread")
+        uvicorn.run(fastapi_app, host="0.0.0.0", port=int(os.environ.get("PORT", 10000)), log_level="info")
     import os
     print("[DEBUG] About to get or create event loop and run run()")
     import sys
