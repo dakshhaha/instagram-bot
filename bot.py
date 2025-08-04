@@ -465,9 +465,16 @@ def main():
         await app.run_polling(close_loop=False, stop_signals=None)
         print("[DEBUG] app.run_polling() has exited")
     import os
-    print("[DEBUG] About to call asyncio.run(run())")
-    asyncio.run(run())
-    print("[DEBUG] Exited asyncio.run(run())")
+    print("[DEBUG] About to get or create event loop and run run()")
+    import sys
+    import asyncio
+    if sys.platform == "win32":
+        loop = asyncio.ProactorEventLoop()
+        asyncio.set_event_loop(loop)
+    else:
+        loop = asyncio.get_event_loop()
+    loop.run_until_complete(run())
+    print("[DEBUG] Exited loop.run_until_complete(run())")
 
 if __name__ == "__main__":
     main()
