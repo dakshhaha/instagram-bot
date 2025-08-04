@@ -461,9 +461,11 @@ def main():
             print("[DEBUG] Starting FastAPI (uvicorn) thread")
             uvicorn.run(fastapi_app, host="0.0.0.0", port=int(os.environ.get("PORT", 10000)), log_level="info")
         threading.Thread(target=run_fastapi, daemon=True).start()
-        print("[DEBUG] Started FastAPI thread, about to start app.run_polling()")
-        await app.run_polling(close_loop=False, stop_signals=None)
-        print("[DEBUG] app.run_polling() has exited")
+        print("[DEBUG] Started FastAPI thread, about to start app.initialize/start/updater.start_polling()")
+        await app.initialize()
+        await app.start()
+        await app.updater.start_polling()
+        print("[DEBUG] app.updater.start_polling() has exited")
     import os
     print("[DEBUG] About to get or create event loop and run run()")
     import sys
