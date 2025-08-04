@@ -480,9 +480,12 @@ def main():
         print(f"[DEBUG] Setting webhook to {WEBHOOK_URL}")
         await app.bot.set_webhook(WEBHOOK_URL)
 
-        # Start FastAPI (uvicorn) in main thread
-        print("[DEBUG] Starting FastAPI (uvicorn) in main thread")
-        uvicorn.run(fastapi_app, host="0.0.0.0", port=int(os.environ.get("PORT", 10000)), log_level="info")
+        # Start FastAPI (uvicorn) in async context
+        print("[DEBUG] Starting FastAPI (uvicorn) with await server.serve() in async context")
+        import uvicorn
+        config = uvicorn.Config(fastapi_app, host="0.0.0.0", port=int(os.environ.get("PORT", 10000)), log_level="info")
+        server = uvicorn.Server(config)
+        await server.serve()
     import os
     print("[DEBUG] About to get or create event loop and run run()")
     import sys
