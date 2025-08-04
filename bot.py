@@ -19,13 +19,13 @@ ADMIN_IDS = [7688652530, 8115268811]
 
 # Channel info
 CHANNELS = [
-    ("@dakshbio", "Join1", "https://t.me/dakshbio"),
+    ("@dakshbio", "Join1", "https://t.me/itzdhruvfreindsgroup"),
     ("@itzdhruv1060", "Join2", "https://t.me/itzdhruv1060"),
     ("@itzpaidmodfree", "Join3", "https://t.me/itzpaidmodfree"),
     ("@F3tG9JyvsONmNjhl", "Join4", "https://t.me/+F3tG9JyvsONmNjhl"),
     ("@paidmodffreee", "Join5", "https://t.me/paidmodffreee"),
     ("@itzteamlegend", "Join6", "https://t.me/itzteamlegend"),
-    ("@itzdhruvfreindsgroup", "Join7", "https://t.me/itzdhruvfreindsgroup"),
+    ("@itzdhruvfreindsgroup", "Join7", "https://t.me/dakshbio"),
 ]
 
 
@@ -558,6 +558,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
