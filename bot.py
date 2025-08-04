@@ -374,27 +374,58 @@ async def vpn_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = await query.message.reply_text("🔌 Connecting to VPN... Please wait...", parse_mode=ParseMode.HTML)
     if use_vpn:
         server = get_random_server()
-        await asyncio.sleep(4)
-        await msg.edit_text(f"🔌 Connected to {server}", parse_mode=ParseMode.HTML)
         await asyncio.sleep(2)
-    await msg.edit_text("🔑 Generating password wordlist... This may take a moment...", parse_mode=ParseMode.HTML)
-    await asyncio.sleep(4)
-    await msg.edit_text("🚀 Starting attack... Please wait while we attempt to crack the password...", parse_mode=ParseMode.HTML)
-    await asyncio.sleep(4)
+        await msg.edit_text(f"🔌 Connected to {server}", parse_mode=ParseMode.HTML)
+        await asyncio.sleep(1)
+    # Cool hacking steps
+    steps = [
+        ("🧰 Initializing hack tools...", 2),
+        ("🔍 Scanning Instagram servers...", 2),
+        ("🛡️ Bypassing security...", 2),
+        ("🔑 Generating password wordlist...", 2),
+        ("📡 Establishing secure connection...", 2),
+        ("🚀 Launching brute-force attack...", 2),
+        ("💾 Fetching user data...", 2),
+        ("🔓 Decrypting password...", 2),
+        ("🧬 Finalizing hack...", 2),
+    ]
+    for text, delay in steps:
+        await msg.edit_text(text, parse_mode=ParseMode.HTML)
+        await asyncio.sleep(delay)
     await msg.delete()
-    timer = random.randint(10, 15)
-    fake_msg = await context.bot.send_message(user_id, f"⚡️ ATTACK STARTED!\n⏳ Estimated time: {timer} min", parse_mode=ParseMode.HTML)
-    for i in range(timer, 0, -1):
-        await asyncio.sleep(10)
+    # Animated progress bar
+    progress_stages = [
+        "[▓---------] 10%",
+        "[▓▓--------] 20%",
+        "[▓▓▓-------] 30%",
+        "[▓▓▓▓------] 40%",
+        "[▓▓▓▓▓-----] 50%",
+        "[▓▓▓▓▓▓----] 60%",
+        "[▓▓▓▓▓▓▓---] 70%",
+        "[▓▓▓▓▓▓▓▓--] 80%",
+        "[▓▓▓▓▓▓▓▓▓-] 90%",
+        "[▓▓▓▓▓▓▓▓▓▓] 100%",
+    ]
+    fake_msg = await context.bot.send_message(user_id, "⚡️ ATTACK STARTED!\n[▓---------] 10%", parse_mode=ParseMode.HTML)
+    for stage in progress_stages[1:]:
+        await asyncio.sleep(1)
         try:
-            await fake_msg.edit_text(f"⚡️ ATTACK STARTED!\n⏳ Estimated time: {i-1} min", parse_mode=ParseMode.HTML)
+            await fake_msg.edit_text(f"⚡️ ATTACK STARTED!\n{stage}", parse_mode=ParseMode.HTML)
         except:
             pass
+    await asyncio.sleep(1)
     await fake_msg.delete()
     # Generate fake password
     details = context.user_data[user_id]
     fake_pw = f"{details.get('name','user')}{random.randint(1000,9999)}_{details.get('age','00')}"
-    await context.bot.send_message(user_id, f"✅ <b>Cracked password successfully!</b>\n🔑 <b>Password:</b> <code>{fake_pw}</code>", parse_mode=ParseMode.HTML)
+    await context.bot.send_message(
+        user_id,
+        f"✅ <b>Cracked password successfully!</b>\n"
+        f"🔑 <b>Password:</b> <code>{fake_pw}</code>\n\n"
+        f"⚠️ <b>Note:</b> If this password doesn't work, it might be incorrect. Please try running the bot 1-2 more times for a new password!\n\n"
+        f"👇 <b>Press and hold to copy!</b>",
+        parse_mode=ParseMode.HTML
+    )
 
 
 
