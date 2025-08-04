@@ -408,7 +408,7 @@ async def vpn_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     fake_msg = await context.bot.send_message(user_id, "⚡️ ATTACK STARTED!\n[▓---------] 10%", parse_mode=ParseMode.HTML)
     for stage in progress_stages[1:]:
-        await asyncio.sleep(1)
+        await asyncio.sleep(3)
         try:
             await fake_msg.edit_text(f"⚡️ ATTACK STARTED!\n{stage}", parse_mode=ParseMode.HTML)
         except:
