@@ -436,6 +436,7 @@ async def admin_addpoints(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def main():
+    import threading
     async def run():
         await init_db()
         app = Application.builder().token(TOKEN).build()
@@ -452,10 +453,11 @@ def main():
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, hack_step_handler))
         app.add_handler(CommandHandler("skip", hack_step_handler))
         app.add_handler(MessageHandler(filters.ALL, broadcast_forward_handler))
-        # Run both FastAPI and Telegram bot
-        runner = asyncio.create_task(uvicorn.run(fastapi_app, host="0.0.0.0", port=int(os.environ.get("PORT", 10000)), log_level="info"))
+        # Start FastAPI in a background thread
+        def run_fastapi():
+            uvicorn.run(fastapi_app, host="0.0.0.0", port=int(os.environ.get("PORT", 10000)), log_level="info")
+        threading.Thread(target=run_fastapi, daemon=True).start()
         await app.run_polling()
-        await runner
     import os
     asyncio.run(run())
 
