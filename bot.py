@@ -465,7 +465,8 @@ def main():
         await app.initialize()
         await app.start()
         await app.updater.start_polling()
-        print("[DEBUG] app.updater.start_polling() has exited")
+        print("[DEBUG] app.updater.start_polling() has exited, entering infinite wait to keep process alive")
+        await asyncio.Event().wait()
     import os
     print("[DEBUG] About to get or create event loop and run run()")
     import sys
