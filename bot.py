@@ -1,3 +1,4 @@
+
 import logging
 import asyncio
 import random
@@ -47,7 +48,9 @@ import json
 @fastapi_app.post("/webhook")
 async def telegram_webhook(request: Request):
     data = await request.body()
+    print("[DEBUG] /webhook endpoint hit, raw data:", data)
     await fastapi_app.bot_app.update_queue.put(json.loads(data))
+    print("[DEBUG] Update put into Application.update_queue")
     return {"ok": True}
 
 
@@ -113,6 +116,7 @@ async def set_referral(user_id, ref_id):
         )
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print(f"[DEBUG] /start handler called for user {update.effective_user.id}")
     user = update.effective_user
     user_id = user.id
     ref = None
@@ -480,7 +484,7 @@ def main():
         await app.bot.set_webhook(WEBHOOK_URL)
         await app.initialize()
         await app.start()
-        
+
         # Start FastAPI (uvicorn) in async context
         print("[DEBUG] Starting FastAPI (uvicorn) with await server.serve() in async context")
         import uvicorn
