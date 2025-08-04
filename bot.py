@@ -36,6 +36,9 @@ DB_POOL = None
 # FastAPI app for health check and webhook
 fastapi_app = FastAPI()
 
+# Webhook secret token for Telegram
+WEBHOOK_SECRET_TOKEN = os.environ.get("WEBHOOK_SECRET_TOKEN", "supersecrettoken123")
+
 # Root endpoint for GET /
 @fastapi_app.get("/")
 async def root():
@@ -52,12 +55,18 @@ import json
 
 @fastapi_app.post("/webhook")
 async def telegram_webhook(request: Request):
+    # Check Telegram secret token
+    secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token")
+    if secret != WEBHOOK_SECRET_TOKEN:
+        print("[DEBUG] Invalid secret token in webhook request! Got:", secret)
+        return {"ok": False, "error": "Invalid secret token"}
     data = await request.body()
     print("[DEBUG] /webhook endpoint hit, raw data:", data)
     update = json.loads(data)
     print("[DEBUG] Update type:", update.get("message", {}).get("text") or update.get("callback_query", {}).get("data") or str(update.keys()))
-    await fastapi_app.bot_app.update_queue.put(update)
-    print("[DEBUG] Update put into Application.update_queue")
+    from telegram import Update as TgUpdate
+    await fastapi_app.bot_app.process_update(TgUpdate.de_json(update, fastapi_app.bot_app.bot))
+    print("[DEBUG] Update processed by Application.process_update()")
     return {"ok": True}
 
 
@@ -489,8 +498,12 @@ def main():
 
         print("[DEBUG] Initializing Application...")
         await app.initialize()
-        print(f"[DEBUG] Setting webhook to {WEBHOOK_URL}")
-        await app.bot.set_webhook(WEBHOOK_URL)
+        print(f"[DEBUG] Setting webhook to {WEBHOOK_URL} with secret token and drop_pending_updates=True")
+        await app.bot.set_webhook(
+            WEBHOOK_URL,
+            secret_token=WEBHOOK_SECRET_TOKEN,
+            drop_pending_updates=True
+        )
         print("[DEBUG] Starting Application...")
         await app.start()
 
