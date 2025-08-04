@@ -45,8 +45,10 @@ logging.basicConfig(level=logging.INFO)
 # --- Database helpers ---
 async def init_db():
     global DB_POOL
+    db_url = os.environ.get("DATABASE_URL")
+    print("[DEBUG] DATABASE_URL:", db_url)
     DB_POOL = await asyncpg.create_pool(
-        dsn=os.environ.get("DATABASE_URL")
+        dsn=db_url
     )
     async with DB_POOL.acquire() as conn:
         await conn.execute('''
