@@ -479,6 +479,7 @@ def main():
 
         print(f"[DEBUG] Setting webhook to {WEBHOOK_URL}")
         await app.bot.set_webhook(WEBHOOK_URL)
+        await app.initialize()
         await app.start()
         await app.updater.start()
 
