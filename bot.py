@@ -1,4 +1,3 @@
-
 import logging
 import asyncio
 import random
@@ -481,8 +480,7 @@ def main():
         await app.bot.set_webhook(WEBHOOK_URL)
         await app.initialize()
         await app.start()
-        await app.updater.start()
-
+        
         # Start FastAPI (uvicorn) in async context
         print("[DEBUG] Starting FastAPI (uvicorn) with await server.serve() in async context")
         import uvicorn
