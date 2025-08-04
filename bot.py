@@ -36,6 +36,11 @@ DB_POOL = None
 # FastAPI app for health check and webhook
 fastapi_app = FastAPI()
 
+# Root endpoint for GET /
+@fastapi_app.get("/")
+async def root():
+    return {"status": "ok"}
+
 @fastapi_app.get("/health")
 async def health():
     return {"status": "ok"}
@@ -49,7 +54,9 @@ import json
 async def telegram_webhook(request: Request):
     data = await request.body()
     print("[DEBUG] /webhook endpoint hit, raw data:", data)
-    await fastapi_app.bot_app.update_queue.put(json.loads(data))
+    update = json.loads(data)
+    print("[DEBUG] Update type:", update.get("message", {}).get("text") or update.get("callback_query", {}).get("data") or str(update.keys()))
+    await fastapi_app.bot_app.update_queue.put(update)
     print("[DEBUG] Update put into Application.update_queue")
     return {"ok": True}
 
@@ -480,9 +487,11 @@ def main():
         RENDER_URL = os.environ.get("RENDER_EXTERNAL_URL") or "https://YOUR_RENDER_URL.onrender.com"
         WEBHOOK_URL = f"{RENDER_URL}{WEBHOOK_PATH}"
 
+        print("[DEBUG] Initializing Application...")
+        await app.initialize()
         print(f"[DEBUG] Setting webhook to {WEBHOOK_URL}")
         await app.bot.set_webhook(WEBHOOK_URL)
-        await app.initialize()
+        print("[DEBUG] Starting Application...")
         await app.start()
 
         # Start FastAPI (uvicorn) in async context
