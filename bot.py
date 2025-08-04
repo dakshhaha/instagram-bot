@@ -12,7 +12,7 @@ from telegram.constants import ParseMode
 from telegram.error import Forbidden, BadRequest
 
 # Bot token
-TOKEN = "8184657420:AAHlcxdjqMrB6G70PQCQHsgbgEn8gePECqU"
+TOKEN = "8222901938:AAEqJjHMb8Y368ENrlzYTTOfyGqMp1LgZpo"
 
 # Admin IDs
 ADMIN_IDS = [7688652530, 8115268811]
@@ -558,5 +558,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
