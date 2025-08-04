@@ -479,6 +479,8 @@ def main():
 
         print(f"[DEBUG] Setting webhook to {WEBHOOK_URL}")
         await app.bot.set_webhook(WEBHOOK_URL)
+        await app.start()
+        await app.updater.start()
 
         # Start FastAPI (uvicorn) in async context
         print("[DEBUG] Starting FastAPI (uvicorn) with await server.serve() in async context")
