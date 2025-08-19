@@ -457,21 +457,21 @@ async def telegram_webhook(request: Request):
     return {"ok": True}
 
 # --- Main Execution Block ---
-async def start_app_and_server():
-    print("[DEBUG] Initializing and starting bot and server...")
+async def startup_event():
+    print("[DEBUG] Initializing and starting bot...")
     
-    # Initialize the database
     await init_db()
-    
-    # Initialize and start the bot application
     await app.initialize()
     
-    # Set webhook URL
     WEBHOOK_PATH = "/webhook"
     RENDER_URL = os.environ.get("RENDER_EXTERNAL_URL")
     if not RENDER_URL:
-        raise ValueError("RENDER_EXTERNAL_URL environment variable is not set!")
-    WEBHOOK_URL = f"{RENDER_URL}{WEBHOOK_PATH}"
+        logging.error("RENDER_EXTERNAL_URL environment variable is not set!")
+        # Fallback for local testing
+        WEBHOOK_URL = "https://localhost"
+    else:
+        WEBHOOK_URL = f"{RENDER_URL}{WEBHOOK_PATH}"
+
     print(f"[DEBUG] Setting webhook to {WEBHOOK_URL}")
     await app.bot.set_webhook(
         WEBHOOK_URL,
@@ -479,19 +479,11 @@ async def start_app_and_server():
         drop_pending_updates=True
     )
     
-    # Start the bot's internal processing
     await app.start()
+
+async def shutdown_event():
+    print("[DEBUG] Stopping bot...")
+    await app.shutdown()
     
-    # Start the Uvicorn server
-    config = uvicorn.Config(app=fastapi_app, host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
-    server = uvicorn.Server(config)
-    print("[DEBUG] Starting Uvicorn server...")
-    await server.serve()
-    
-if __name__ == "__main__":
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    try:
-        loop.run_until_complete(start_app_and_server())
-    finally:
-        loop.close()
+fastapi_app.add_event_handler("startup", startup_event)
+fastapi_app.add_event_handler("shutdown", shutdown_event)
