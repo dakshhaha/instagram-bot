@@ -9,11 +9,11 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 from telegram.constants import ParseMode
 from telegram.error import Forbidden, BadRequest
+from telegram import Update as TgUpdate
+import json
 
-# Bot token
+# Bot token and Admin IDs
 TOKEN = "8099101584:AAF5KR2d1z60Zafs4aOm48qzvzm4RqN41hI"
-
-# Admin IDs
 ADMIN_IDS = [7688652530, 8115268811]
 
 # Channel info
@@ -30,7 +30,7 @@ CHANNELS = [
 # Database connection (set by init_db)
 DB_POOL = None
 
-
+# Set up logging
 logging.basicConfig(level=logging.INFO)
 
 # --- Database helpers ---
@@ -92,6 +92,7 @@ async def set_referral(user_id, ref_id):
             user_id, ref_id
         )
 
+# --- Handler Functions ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print(f"[DEBUG] /start handler called for user {update.effective_user.id}")
     user = update.effective_user
@@ -107,7 +108,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await send_channel_join(update, context)
 
 def get_channel_keyboard():
-    # Channels 1-6: 2 per row, only show button name (Join1, Join2, ...)
     buttons = []
     row = []
     for i, (_, name, url) in enumerate(CHANNELS[:6]):
@@ -117,11 +117,9 @@ def get_channel_keyboard():
             row = []
     if row:
         buttons.append(row)
-    # Channel 7 in its own row
     if len(CHANNELS) > 6:
         _, name, url = CHANNELS[6]
         buttons.append([InlineKeyboardButton(name, url=url)])
-    # Check button below
     buttons.append([InlineKeyboardButton("✅ Check", callback_data="check_channels")])
     return InlineKeyboardMarkup(buttons)
 
@@ -170,7 +168,6 @@ async def send_main_menu(query, context):
         reply_markup=get_main_menu(),
         parse_mode=ParseMode.HTML)
 
-# --- Helper functions ---
 def get_refer_link(user_id, context):
     return f"https://t.me/{context.bot.username}?start={user_id}"
 
@@ -181,7 +178,6 @@ def get_random_server():
     servers = ["🇺🇸 USA-1", "🇬🇧 UK-2", "🇩🇪 DE-3", "🇸🇬 SG-4", "🇫🇷 FR-5", "🇮🇳 IN-6", "🇯🇵 JP-7"]
     return random.choice(servers)
 
-# --- Handler: Refer Link ---
 async def refer_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.callback_query.from_user.id
     link = get_refer_link(user_id, context)
@@ -190,7 +186,6 @@ async def refer_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🔗 <b>Your personal referral link:</b>\n<code>{link}</code>\n\n👥 Share this link with your friends! When they join and verify, you'll earn points automatically. The more you invite, the more you can use the bot's features!",
         parse_mode=ParseMode.HTML)
 
-# --- Handler: My Points ---
 async def my_points(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.callback_query.from_user.id
     user_row = await get_user(user_id)
@@ -201,7 +196,6 @@ async def my_points(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"💰 <b>Your Points:</b> <b>{points}</b>\n👥 <b>Total Invites:</b> <b>{invites}</b>\n\nKeep inviting friends to earn more points and unlock more features!",
         parse_mode=ParseMode.HTML)
 
-# --- Handler: Hack Instagram Account (stepper) ---
 async def hack_ig(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.callback_query.from_user.id
     user_row = await get_user(user_id)
@@ -218,7 +212,6 @@ async def hack_ig(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await ask_instagram_username(update, context)
 
 async def ask_instagram_username(update, context):
-    # Username is required, cannot skip
     msg = (
         "👤 <b>Enter the Instagram username you want to hack:</b>\n\n"
         "Please provide the username (e.g. <code>target_user123</code>). This is required to continue."
@@ -283,48 +276,32 @@ async def hack_step_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not step:
         return
     text = update.message.text
-    # Username is required, cannot skip
     if step == "username":
         if not text or text.strip() == "" or text.strip() == "/skip":
-            await update.message.reply_text(
-                "❗️ <b>Username is required!</b>\nPlease enter the Instagram username to continue.",
-                parse_mode=ParseMode.HTML)
+            await update.message.reply_text("❗️ <b>Username is required!</b>\nPlease enter the Instagram username to continue.", parse_mode=ParseMode.HTML)
             return
         context.user_data[user_id]["username"] = text
         await ask_target_name(update, context)
     elif step == "name":
-        if text == "/skip":
-            text = "Skipped"
-        context.user_data[user_id]["name"] = text
+        context.user_data[user_id]["name"] = text if text != "/skip" else "Skipped"
         await ask_target_age(update, context)
     elif step == "age":
-        if text == "/skip":
-            text = "Skipped"
-        context.user_data[user_id]["age"] = text
+        context.user_data[user_id]["age"] = text if text != "/skip" else "Skipped"
         await ask_email(update, context)
     elif step == "email":
-        if text == "/skip":
-            text = "Skipped"
-        context.user_data[user_id]["email"] = text
+        context.user_data[user_id]["email"] = text if text != "/skip" else "Skipped"
         await ask_phone(update, context)
     elif step == "phone":
-        if text == "/skip":
-            text = "Skipped"
-        context.user_data[user_id]["phone"] = text
+        context.user_data[user_id]["phone"] = text if text != "/skip" else "Skipped"
         await ask_password_count(update, context)
     elif step == "count":
-        if text == "/skip":
-            text = "10000"
         try:
-            count = int(text)
-            if count > 100000:
-                count = 100000
-        except:
-            count = 10000
-        context.user_data[user_id]["count"] = count
+            count = int(text) if text != "/skip" else 10000
+            context.user_data[user_id]["count"] = min(count, 100000)
+        except (ValueError, TypeError):
+            context.user_data[user_id]["count"] = 10000
         await ask_vpn(update, context)
 
-# --- VPN Callback ---
 async def vpn_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     user_id = query.from_user.id
@@ -337,7 +314,7 @@ async def vpn_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await asyncio.sleep(2)
         await msg.edit_text(f"🔌 Connected to {server}", parse_mode=ParseMode.HTML)
         await asyncio.sleep(1)
-    # Cool hacking steps
+    
     steps = [
         ("🧰 Initializing hack tools...", 2),
         ("🔍 Scanning Instagram servers...", 2),
@@ -353,35 +330,26 @@ async def vpn_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await msg.edit_text(text, parse_mode=ParseMode.HTML)
         await asyncio.sleep(delay)
     await msg.delete()
-    # Animated progress bar
+    
     progress_stages = [
-        "[▓---------] 10%",
-        "[▓▓--------] 20%",
-        "[▓▓▓-------] 30%",
-        "[▓▓▓▓------] 40%",
-        "[▓▓▓▓▓-----] 50%",
-        "[▓▓▓▓▓▓----] 60%",
-        "[▓▓▓▓▓▓▓---] 70%",
-        "[▓▓▓▓▓▓▓▓--] 80%",
-        "[▓▓▓▓▓▓▓▓▓-] 90%",
-        "[▓▓▓▓▓▓▓▓▓▓] 100%",
+        "[▓---------] 10%", "[▓▓--------] 20%", "[▓▓▓-------] 30%", "[▓▓▓▓------] 40%", "[▓▓▓▓▓-----] 50%",
+        "[▓▓▓▓▓▓----] 60%", "[▓▓▓▓▓▓▓---] 70%", "[▓▓▓▓▓▓▓▓--] 80%", "[▓▓▓▓▓▓▓▓▓-] 90%", "[▓▓▓▓▓▓▓▓▓▓] 100%",
     ]
     fake_msg = await context.bot.send_message(user_id, "⚡️ ATTACK STARTED!\n[▓---------] 10%", parse_mode=ParseMode.HTML)
     for stage in progress_stages[1:]:
         await asyncio.sleep(3)
         try:
             await fake_msg.edit_text(f"⚡️ ATTACK STARTED!\n{stage}", parse_mode=ParseMode.HTML)
-        except:
+        except Exception:
             pass
     await asyncio.sleep(1)
     await fake_msg.delete()
-    # Generate fake password
+    
     details = context.user_data[user_id]
-    fake_pw = f"{details.get('name','user')}{random.randint(1000,9999)}_{details.get('age','00')}"
+    fake_pw = f"{details.get('name', 'user')}{random.randint(1000, 9999)}_{details.get('age', '00')}"
     await context.bot.send_message(
         user_id,
-        f"✅ <b>Cracked password successfully!</b>\n"
-        f"🔑 <b>Password:</b> <code>{fake_pw}</code>\n\n"
+        f"✅ <b>Cracked password successfully!</b>\n🔑 <b>Password:</b> <code>{fake_pw}</code>\n\n"
         f"⚠️ <b>Note:</b> If this password doesn't work, it might be incorrect. Please try running the bot 1-2 more times for a new password!\n\n"
         f"👇 <b>Press and hold to copy!</b>",
         parse_mode=ParseMode.HTML
@@ -390,16 +358,14 @@ async def vpn_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # --- Admin Commands ---
 async def admin_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    if not is_admin(user_id):
-        return
+    if not is_admin(user_id): return
     async with DB_POOL.acquire() as conn:
         total_users = await conn.fetchval("SELECT COUNT(*) FROM users")
     await update.message.reply_text(f"👑 <b>Total users in bot:</b> {total_users}", parse_mode=ParseMode.HTML)
 
 async def admin_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    if not is_admin(user_id):
-        return
+    if not is_admin(user_id): return
     async with DB_POOL.acquire() as conn:
         rows = await conn.fetch("SELECT user_id FROM users")
     user_list = [str(row["user_id"]) for row in rows]
@@ -408,88 +374,52 @@ async def admin_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def admin_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    if not is_admin(user_id):
-        return
+    if not is_admin(user_id): return
     await update.message.reply_text("Please send the message you want to broadcast to all users. It will be forwarded as-is. (Text, photo, video, etc. supported)")
     context.user_data["awaiting_broadcast"] = True
 
 async def broadcast_forward_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    if not is_admin(user_id):
-        return
-    if not context.user_data.get("awaiting_broadcast"):
-        return
+    if not is_admin(user_id): return
+    if not context.user_data.get("awaiting_broadcast"): return
     context.user_data["awaiting_broadcast"] = False
     async with DB_POOL.acquire() as conn:
         rows = await conn.fetch("SELECT user_id FROM users")
     count = 0
     for row in rows:
         uid = row["user_id"]
-        try:
-            await update.forward(chat_id=uid)
-        except:
-            pass
+        try: await update.forward(chat_id=uid)
+        except Exception: pass
+        count += 1
     await update.message.reply_text(f"Broadcast sent to {count} users.")
 
 async def admin_addpoints(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    if not is_admin(user_id):
-        return
+    if not is_admin(user_id): return
     args = context.args
     if len(args) < 2:
         await update.message.reply_text("Usage: /addpoints <user_id> <points>")
         return
     try:
-        target_id = int(args[0])
-        points = int(args[1])
-    except:
+        target_id, points = int(args[0]), int(args[1])
+    except (ValueError, IndexError):
         await update.message.reply_text("Invalid arguments. Usage: /addpoints <user_id> <points>")
         return
     target_user = await get_user(target_id)
-    if not target_user:
-        await set_user(target_id)
-        target_user = await get_user(target_id)
+    if not target_user: await set_user(target_id)
+    target_user = await get_user(target_id)
     new_points = target_user["points"] + points
     await update_user(target_id, points=new_points)
     await update.message.reply_text(f"✅ Added {points} points to user {target_id}. Total points: {new_points}")
 
-# --- FastAPI and Telegram Bot Initialization ---
+# --- FastAPI and Telegram Bot Initialization (Global Scope) ---
 fastapi_app = FastAPI()
 app = Application.builder().token(TOKEN).build()
 fastapi_app.bot_app = app
 WEBHOOK_SECRET_TOKEN = os.environ.get("WEBHOOK_SECRET_TOKEN", "supersecrettoken123")
 
 
-# Root endpoint for GET /
-@fastapi_app.get("/")
-async def root():
-    return {"status": "ok"}
-
-@fastapi_app.get("/health")
-async def health():
-    return {"status": "ok"}
-
-# Telegram webhook endpoint
-from telegram import Update as TgUpdate
-import json
-
-@fastapi_app.post("/webhook")
-async def telegram_webhook(request: Request):
-    # Check Telegram secret token
-    secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token")
-    if secret != WEBHOOK_SECRET_TOKEN:
-        print("[DEBUG] Invalid secret token in webhook request! Got:", secret)
-        return {"ok": False, "error": "Invalid secret token"}
-    data = await request.body()
-    print("[DEBUG] /webhook endpoint hit, raw data:", data)
-    update = json.loads(data)
-    print("[DEBUG] Update type:", update.get("message", {}).get("text") or update.get("callback_query", {}).get("data") or str(update.keys()))
-    await fastapi_app.bot_app.process_update(TgUpdate.de_json(update, fastapi_app.bot_app.bot))
-    print("[DEBUG] Update processed by Application.process_update()")
-    return {"ok": True}
-
-
-# Add handlers
+# Add handlers to the bot application
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CallbackQueryHandler(check_channels, pattern="^check_channels$"))
 app.add_handler(CallbackQueryHandler(refer_link, pattern="^refer_link$"))
@@ -504,53 +434,64 @@ app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, hack_step_handle
 app.add_handler(CommandHandler("skip", hack_step_handler))
 app.add_handler(MessageHandler(filters.ALL, broadcast_forward_handler))
 
+@fastapi_app.get("/")
+async def root():
+    return {"status": "ok"}
 
-async def run_uvicorn():
-    """Starts the FastAPI application server."""
-    config = uvicorn.Config(fastapi_app, host="0.0.0.0", port=int(os.environ.get("PORT", 10000)), log_level="info")
-    server = uvicorn.Server(config)
-    await server.serve()
+@fastapi_app.get("/health")
+async def health():
+    return {"status": "ok"}
 
-async def run_bot_and_server():
-    """Initializes the database, sets the webhook, and runs both the bot and FastAPI server."""
-    print("[DEBUG] Entered run_bot_and_server() async function")
+@fastapi_app.post("/webhook")
+async def telegram_webhook(request: Request):
+    secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token")
+    if secret != WEBHOOK_SECRET_TOKEN:
+        print("[DEBUG] Invalid secret token in webhook request! Got:", secret)
+        return {"ok": False, "error": "Invalid secret token"}
+    data = await request.body()
+    print("[DEBUG] /webhook endpoint hit, raw data:", data)
+    update = json.loads(data)
+    print("[DEBUG] Update type:", update.get("message", {}).get("text") or update.get("callback_query", {}).get("data") or str(update.keys()))
+    await fastapi_app.bot_app.process_update(TgUpdate.de_json(update, fastapi_app.bot_app.bot))
+    print("[DEBUG] Update processed by Application.process_update()")
+    return {"ok": True}
+
+# --- Main Execution Block ---
+async def start_app_and_server():
+    print("[DEBUG] Initializing and starting bot and server...")
+    
+    # Initialize the database
     await init_db()
-    print("[DEBUG] Finished init_db()")
-
-    # Set webhook URL (replace YOUR_RENDER_URL with your actual Render HTTPS URL)
-    WEBHOOK_PATH = "/webhook"
-    RENDER_URL = os.environ.get("RENDER_EXTERNAL_URL") or "https://YOUR_RENDER_URL.onrender.com"
-    WEBHOOK_URL = f"{RENDER_URL}{WEBHOOK_PATH}"
-
-    print("[DEBUG] Initializing Application...")
+    
+    # Initialize and start the bot application
     await app.initialize()
-    print(f"[DEBUG] Setting webhook to {WEBHOOK_URL} with secret token and drop_pending_updates=True")
+    
+    # Set webhook URL
+    WEBHOOK_PATH = "/webhook"
+    RENDER_URL = os.environ.get("RENDER_EXTERNAL_URL")
+    if not RENDER_URL:
+        raise ValueError("RENDER_EXTERNAL_URL environment variable is not set!")
+    WEBHOOK_URL = f"{RENDER_URL}{WEBHOOK_PATH}"
+    print(f"[DEBUG] Setting webhook to {WEBHOOK_URL}")
     await app.bot.set_webhook(
         WEBHOOK_URL,
         secret_token=WEBHOOK_SECRET_TOKEN,
         drop_pending_updates=True
     )
-    print("[DEBUG] Starting Application...")
-    await app.start()
-
-    print("[DEBUG] Starting FastAPI (uvicorn) with await server.serve() in async context")
-    await run_uvicorn()
-
-
-def main():
-    print("[DEBUG] Entered main()")
-    import sys
-    import asyncio
-    if sys.platform == "win32":
-        loop = asyncio.ProactorEventLoop()
-        asyncio.set_event_loop(loop)
-    else:
-        loop = asyncio.get_event_loop()
     
-    # Run the combined bot and server initialization
-    loop.run_until_complete(run_bot_and_server())
-
-    print("[DEBUG] Exited loop.run_until_complete(run_bot_and_server())")
-
+    # Start the bot's internal processing
+    await app.start()
+    
+    # Start the Uvicorn server
+    config = uvicorn.Config(app=fastapi_app, host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+    server = uvicorn.Server(config)
+    print("[DEBUG] Starting Uvicorn server...")
+    await server.serve()
+    
 if __name__ == "__main__":
-    main()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        loop.run_until_complete(start_app_and_server())
+    finally:
+        loop.close()
