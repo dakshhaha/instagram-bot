@@ -12,20 +12,20 @@ from telegram.constants import ParseMode
 from telegram.error import Forbidden, BadRequest
 
 # Bot token
-TOKEN = "8222901938:AAEqJjHMb8Y368ENrlzYTTOfyGqMp1LgZpo"
+TOKEN = "8099101584:AAF5KR2d1z60Zafs4aOm48qzvzm4RqN41hI"
 
 # Admin IDs
 ADMIN_IDS = [7688652530, 8115268811]
 
 # Channel info
 CHANNELS = [
-    ("@dakshbio", "Join1", "https://t.me/itzdhruvfreindsgroup"),
-    ("@itzdhruv1060", "Join2", "https://t.me/itzdhruv1060"),
-    ("@itzpaidmodfree", "Join3", "https://t.me/itzpaidmodfree"),
-    ("@F3tG9JyvsONmNjhl", "Join4", "https://t.me/+F3tG9JyvsONmNjhl"),
-    ("@paidmodffreee", "Join5", "https://t.me/paidmodffreee"),
-    ("@itzteamlegend", "Join6", "https://t.me/itzteamlegend"),
-    ("@itzdhruvfreindsgroup", "Join7", "https://t.me/dakshbio"),
+    (-1002885598450, "Join 1", "https://t.me/itzdhruvfreindsgroup"),
+    ("@itzdhruv1060", "Join 2", "https://t.me/itzdhruv1060"),
+    ("@itzpaidmodfree", "Join 3", "https://t.me/itzpaidmodfree"),
+    ("@F3tG9JyvsONmNjhl", "Join 4", "https://t.me/+F3tG9JyvsONmNjhl"),
+    ("@paidmodffreee", "Join 5", "https://t.me/paidmodffreee"),
+    ("@itzteamlegend", "Join 6", "https://t.me/itzteamlegend"),
+    ("@itzdhruvfreindsgroup", "Join 7", "https://t.me/+RSWh_S-VfS1iNzI1"),
 ]
 
 
@@ -558,6 +558,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
