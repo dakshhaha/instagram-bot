@@ -18,13 +18,12 @@ ADMIN_IDS = [7688652530, 8115268811]
 
 # Channel info
 CHANNELS = [
-    (-1002885598450, "Join 1", "https://t.me/itzdhruvfreindsgroup"),
+    ("@itzdhruvfreindsgroup", "Join 1", "https://t.me/itzdhruvfreindsgroup"),
     ("@itzdhruv1060", "Join 2", "https://t.me/itzdhruv1060"),
     ("@itzpaidmodfree", "Join 3", "https://t.me/itzpaidmodfree"),
     ("@F3tG9JyvsONmNjhl", "Join 4", "https://t.me/+F3tG9JyvsONmNjhl"),
     ("@paidmodffreee", "Join 5", "https://t.me/paidmodffreee"),
     ("@itzteamlegend", "Join 6", "https://t.me/itzteamlegend"),
-    ("@itzdhruvfreindsgroup", "Join 7", "https://t.me/+RSWh_S-VfS1iNzI1"),
 ]
 
 # Database connection (set by init_db)
@@ -487,3 +486,4 @@ async def shutdown_event():
     
 fastapi_app.add_event_handler("startup", startup_event)
 fastapi_app.add_event_handler("shutdown", shutdown_event)
+
