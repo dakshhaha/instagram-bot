@@ -8,6 +8,7 @@ import uvicorn
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 from telegram.constants import ParseMode
+from telegram.error import Forbidden, BadRequest
 
 # Bot token
 TOKEN = "8099101584:AAF5KR2d1z60Zafs4aOm48qzvzm4RqN41hI"
@@ -29,62 +30,6 @@ CHANNELS = [
 # Database connection (set by init_db)
 DB_POOL = None
 
-# FastAPI app for health check and webhook
-fastapi_app = FastAPI()
-
-# Webhook secret token for Telegram
-WEBHOOK_SECRET_TOKEN = os.environ.get("WEBHOOK_SECRET_TOKEN", "supersecrettoken123")
-
-
-# **FIX START**
-# Initialize the Telegram Application object globally
-app = Application.builder().token(TOKEN).build()
-fastapi_app.bot_app = app # Assign bot_app to fastapi_app here
-
-# Add handlers
-app.add_handler(CommandHandler("start", start))
-app.add_handler(CallbackQueryHandler(check_channels, pattern="^check_channels$"))
-app.add_handler(CallbackQueryHandler(refer_link, pattern="^refer_link$"))
-app.add_handler(CallbackQueryHandler(my_points, pattern="^my_points$"))
-app.add_handler(CallbackQueryHandler(hack_ig, pattern="^hack_ig$"))
-app.add_handler(CallbackQueryHandler(vpn_choice, pattern="^vpn_yes$|^vpn_no$"))
-app.add_handler(CommandHandler("admin", admin_stats))
-app.add_handler(CommandHandler("users", admin_users))
-app.add_handler(CommandHandler("broadcast", admin_broadcast))
-app.add_handler(CommandHandler("addpoints", admin_addpoints))
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, hack_step_handler))
-app.add_handler(CommandHandler("skip", hack_step_handler))
-app.add_handler(MessageHandler(filters.ALL, broadcast_forward_handler))
-# **FIX END**
-
-
-# Root endpoint for GET /
-@fastapi_app.get("/")
-async def root():
-    return {"status": "ok"}
-
-@fastapi_app.get("/health")
-async def health():
-    return {"status": "ok"}
-
-# Telegram webhook endpoint
-import json
-from telegram import Update as TgUpdate
-
-@fastapi_app.post("/webhook")
-async def telegram_webhook(request: Request):
-    # Check Telegram secret token
-    secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token")
-    if secret != WEBHOOK_SECRET_TOKEN:
-        print("[DEBUG] Invalid secret token in webhook request! Got:", secret)
-        return {"ok": False, "error": "Invalid secret token"}
-    data = await request.body()
-    print("[DEBUG] /webhook endpoint hit, raw data:", data)
-    update = json.loads(data)
-    print("[DEBUG] Update type:", update.get("message", {}).get("text") or update.get("callback_query", {}).get("data") or str(update.keys()))
-    await fastapi_app.bot_app.process_update(TgUpdate.de_json(update, fastapi_app.bot_app.bot))
-    print("[DEBUG] Update processed by Application.process_update()")
-    return {"ok": True}
 
 logging.basicConfig(level=logging.INFO)
 
@@ -224,7 +169,6 @@ async def send_main_menu(query, context):
         "<b>🎉 Welcome to the Instagram Hacking Bot!</b>\n\nChoose an option below to get started. Earn points by inviting friends, check your points, or Hack someone's Instagram Account!",
         reply_markup=get_main_menu(),
         parse_mode=ParseMode.HTML)
-
 
 # --- Helper functions ---
 def get_refer_link(user_id, context):
@@ -443,8 +387,6 @@ async def vpn_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.HTML
     )
 
-
-
 # --- Admin Commands ---
 async def admin_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -510,6 +452,57 @@ async def admin_addpoints(update: Update, context: ContextTypes.DEFAULT_TYPE):
     new_points = target_user["points"] + points
     await update_user(target_id, points=new_points)
     await update.message.reply_text(f"✅ Added {points} points to user {target_id}. Total points: {new_points}")
+
+# --- FastAPI and Telegram Bot Initialization ---
+fastapi_app = FastAPI()
+app = Application.builder().token(TOKEN).build()
+fastapi_app.bot_app = app
+WEBHOOK_SECRET_TOKEN = os.environ.get("WEBHOOK_SECRET_TOKEN", "supersecrettoken123")
+
+
+# Root endpoint for GET /
+@fastapi_app.get("/")
+async def root():
+    return {"status": "ok"}
+
+@fastapi_app.get("/health")
+async def health():
+    return {"status": "ok"}
+
+# Telegram webhook endpoint
+from telegram import Update as TgUpdate
+import json
+
+@fastapi_app.post("/webhook")
+async def telegram_webhook(request: Request):
+    # Check Telegram secret token
+    secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token")
+    if secret != WEBHOOK_SECRET_TOKEN:
+        print("[DEBUG] Invalid secret token in webhook request! Got:", secret)
+        return {"ok": False, "error": "Invalid secret token"}
+    data = await request.body()
+    print("[DEBUG] /webhook endpoint hit, raw data:", data)
+    update = json.loads(data)
+    print("[DEBUG] Update type:", update.get("message", {}).get("text") or update.get("callback_query", {}).get("data") or str(update.keys()))
+    await fastapi_app.bot_app.process_update(TgUpdate.de_json(update, fastapi_app.bot_app.bot))
+    print("[DEBUG] Update processed by Application.process_update()")
+    return {"ok": True}
+
+
+# Add handlers
+app.add_handler(CommandHandler("start", start))
+app.add_handler(CallbackQueryHandler(check_channels, pattern="^check_channels$"))
+app.add_handler(CallbackQueryHandler(refer_link, pattern="^refer_link$"))
+app.add_handler(CallbackQueryHandler(my_points, pattern="^my_points$"))
+app.add_handler(CallbackQueryHandler(hack_ig, pattern="^hack_ig$"))
+app.add_handler(CallbackQueryHandler(vpn_choice, pattern="^vpn_yes$|^vpn_no$"))
+app.add_handler(CommandHandler("admin", admin_stats))
+app.add_handler(CommandHandler("users", admin_users))
+app.add_handler(CommandHandler("broadcast", admin_broadcast))
+app.add_handler(CommandHandler("addpoints", admin_addpoints))
+app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, hack_step_handler))
+app.add_handler(CommandHandler("skip", hack_step_handler))
+app.add_handler(MessageHandler(filters.ALL, broadcast_forward_handler))
 
 
 async def run_uvicorn():
