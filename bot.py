@@ -1,15 +1,13 @@
-
 import logging
 import asyncio
 import random
 import os
 import asyncpg
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 import uvicorn
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 from telegram.constants import ParseMode
-from telegram.error import Forbidden, BadRequest
 
 # Bot token
 TOKEN = "8099101584:AAF5KR2d1z60Zafs4aOm48qzvzm4RqN41hI"
@@ -28,16 +26,37 @@ CHANNELS = [
     ("@itzdhruvfreindsgroup", "Join 7", "https://t.me/+RSWh_S-VfS1iNzI1"),
 ]
 
-
 # Database connection (set by init_db)
 DB_POOL = None
-
 
 # FastAPI app for health check and webhook
 fastapi_app = FastAPI()
 
 # Webhook secret token for Telegram
 WEBHOOK_SECRET_TOKEN = os.environ.get("WEBHOOK_SECRET_TOKEN", "supersecrettoken123")
+
+
+# **FIX START**
+# Initialize the Telegram Application object globally
+app = Application.builder().token(TOKEN).build()
+fastapi_app.bot_app = app # Assign bot_app to fastapi_app here
+
+# Add handlers
+app.add_handler(CommandHandler("start", start))
+app.add_handler(CallbackQueryHandler(check_channels, pattern="^check_channels$"))
+app.add_handler(CallbackQueryHandler(refer_link, pattern="^refer_link$"))
+app.add_handler(CallbackQueryHandler(my_points, pattern="^my_points$"))
+app.add_handler(CallbackQueryHandler(hack_ig, pattern="^hack_ig$"))
+app.add_handler(CallbackQueryHandler(vpn_choice, pattern="^vpn_yes$|^vpn_no$"))
+app.add_handler(CommandHandler("admin", admin_stats))
+app.add_handler(CommandHandler("users", admin_users))
+app.add_handler(CommandHandler("broadcast", admin_broadcast))
+app.add_handler(CommandHandler("addpoints", admin_addpoints))
+app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, hack_step_handler))
+app.add_handler(CommandHandler("skip", hack_step_handler))
+app.add_handler(MessageHandler(filters.ALL, broadcast_forward_handler))
+# **FIX END**
+
 
 # Root endpoint for GET /
 @fastapi_app.get("/")
@@ -49,9 +68,8 @@ async def health():
     return {"status": "ok"}
 
 # Telegram webhook endpoint
-from fastapi import Request
-from telegram.ext import Application
 import json
+from telegram import Update as TgUpdate
 
 @fastapi_app.post("/webhook")
 async def telegram_webhook(request: Request):
@@ -64,11 +82,9 @@ async def telegram_webhook(request: Request):
     print("[DEBUG] /webhook endpoint hit, raw data:", data)
     update = json.loads(data)
     print("[DEBUG] Update type:", update.get("message", {}).get("text") or update.get("callback_query", {}).get("data") or str(update.keys()))
-    from telegram import Update as TgUpdate
     await fastapi_app.bot_app.process_update(TgUpdate.de_json(update, fastapi_app.bot_app.bot))
     print("[DEBUG] Update processed by Application.process_update()")
     return {"ok": True}
-
 
 logging.basicConfig(level=logging.INFO)
 
@@ -469,7 +485,6 @@ async def broadcast_forward_handler(update: Update, context: ContextTypes.DEFAUL
         uid = row["user_id"]
         try:
             await update.forward(chat_id=uid)
-            count += 1
         except:
             pass
     await update.message.reply_text(f"Broadcast sent to {count} users.")
@@ -497,55 +512,40 @@ async def admin_addpoints(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"✅ Added {points} points to user {target_id}. Total points: {new_points}")
 
 
+async def run_uvicorn():
+    """Starts the FastAPI application server."""
+    config = uvicorn.Config(fastapi_app, host="0.0.0.0", port=int(os.environ.get("PORT", 10000)), log_level="info")
+    server = uvicorn.Server(config)
+    await server.serve()
+
+async def run_bot_and_server():
+    """Initializes the database, sets the webhook, and runs both the bot and FastAPI server."""
+    print("[DEBUG] Entered run_bot_and_server() async function")
+    await init_db()
+    print("[DEBUG] Finished init_db()")
+
+    # Set webhook URL (replace YOUR_RENDER_URL with your actual Render HTTPS URL)
+    WEBHOOK_PATH = "/webhook"
+    RENDER_URL = os.environ.get("RENDER_EXTERNAL_URL") or "https://YOUR_RENDER_URL.onrender.com"
+    WEBHOOK_URL = f"{RENDER_URL}{WEBHOOK_PATH}"
+
+    print("[DEBUG] Initializing Application...")
+    await app.initialize()
+    print(f"[DEBUG] Setting webhook to {WEBHOOK_URL} with secret token and drop_pending_updates=True")
+    await app.bot.set_webhook(
+        WEBHOOK_URL,
+        secret_token=WEBHOOK_SECRET_TOKEN,
+        drop_pending_updates=True
+    )
+    print("[DEBUG] Starting Application...")
+    await app.start()
+
+    print("[DEBUG] Starting FastAPI (uvicorn) with await server.serve() in async context")
+    await run_uvicorn()
+
+
 def main():
     print("[DEBUG] Entered main()")
-    import threading
-    async def run():
-        print("[DEBUG] Entered run() async function")
-        await init_db()
-        print("[DEBUG] Finished init_db()")
-        app = Application.builder().token(TOKEN).build()
-        app.add_handler(CommandHandler("start", start))
-        app.add_handler(CallbackQueryHandler(check_channels, pattern="^check_channels$"))
-        app.add_handler(CallbackQueryHandler(refer_link, pattern="^refer_link$"))
-        app.add_handler(CallbackQueryHandler(my_points, pattern="^my_points$"))
-        app.add_handler(CallbackQueryHandler(hack_ig, pattern="^hack_ig$"))
-        app.add_handler(CallbackQueryHandler(vpn_choice, pattern="^vpn_yes$|^vpn_no$"))
-        app.add_handler(CommandHandler("admin", admin_stats))
-        app.add_handler(CommandHandler("users", admin_users))
-        app.add_handler(CommandHandler("broadcast", admin_broadcast))
-        app.add_handler(CommandHandler("addpoints", admin_addpoints))
-        app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, hack_step_handler))
-        app.add_handler(CommandHandler("skip", hack_step_handler))
-        app.add_handler(MessageHandler(filters.ALL, broadcast_forward_handler))
-
-        # Attach app to FastAPI for webhook handler
-        fastapi_app.bot_app = app
-
-        # Set webhook URL (replace YOUR_RENDER_URL with your actual Render HTTPS URL)
-        WEBHOOK_PATH = "/webhook"
-        RENDER_URL = os.environ.get("RENDER_EXTERNAL_URL") or "https://YOUR_RENDER_URL.onrender.com"
-        WEBHOOK_URL = f"{RENDER_URL}{WEBHOOK_PATH}"
-
-        print("[DEBUG] Initializing Application...")
-        await app.initialize()
-        print(f"[DEBUG] Setting webhook to {WEBHOOK_URL} with secret token and drop_pending_updates=True")
-        await app.bot.set_webhook(
-            WEBHOOK_URL,
-            secret_token=WEBHOOK_SECRET_TOKEN,
-            drop_pending_updates=True
-        )
-        print("[DEBUG] Starting Application...")
-        await app.start()
-
-        # Start FastAPI (uvicorn) in async context
-        print("[DEBUG] Starting FastAPI (uvicorn) with await server.serve() in async context")
-        import uvicorn
-        config = uvicorn.Config(fastapi_app, host="0.0.0.0", port=int(os.environ.get("PORT", 10000)), log_level="info")
-        server = uvicorn.Server(config)
-        await server.serve()
-    import os
-    print("[DEBUG] About to get or create event loop and run run()")
     import sys
     import asyncio
     if sys.platform == "win32":
@@ -553,13 +553,11 @@ def main():
         asyncio.set_event_loop(loop)
     else:
         loop = asyncio.get_event_loop()
-    loop.run_until_complete(run())
-    print("[DEBUG] Exited loop.run_until_complete(run())")
+    
+    # Run the combined bot and server initialization
+    loop.run_until_complete(run_bot_and_server())
+
+    print("[DEBUG] Exited loop.run_until_complete(run_bot_and_server())")
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
