@@ -23,7 +23,7 @@ CHANNELS = [
     ("@itzpaidmodfree", "Join 3", "https://t.me/itzpaidmodfree"),
     ("@F3tG9JyvsONmNjhl", "Join 4", "https://t.me/+F3tG9JyvsONmNjhl"),
     ("@paidmodffreee", "Join 5", "https://t.me/paidmodffreee"),
-    ("@itzteamlegend", "Join 6", "https://t.me/itzteamlegend"),
+    ("@itzteamlegend", "Join 6", "https://t.me/itzteamlegend")
 ]
 
 # Database connection (set by init_db)
@@ -486,6 +486,7 @@ async def shutdown_event():
     
 fastapi_app.add_event_handler("startup", startup_event)
 fastapi_app.add_event_handler("shutdown", shutdown_event)
+
 
 
 
