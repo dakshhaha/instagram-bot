@@ -13,7 +13,7 @@ from telegram import Update as TgUpdate
 import json
 
 # Bot token and Admin IDs
-TOKEN = "8099101584:AAF5KR2d1z60Zafs4aOm48qzvzm4RqN41hI"
+TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_IDS = [7688652530, 8115268811]
 
 # Channel info
@@ -486,4 +486,5 @@ async def shutdown_event():
     
 fastapi_app.add_event_handler("startup", startup_event)
 fastapi_app.add_event_handler("shutdown", shutdown_event)
+
 
